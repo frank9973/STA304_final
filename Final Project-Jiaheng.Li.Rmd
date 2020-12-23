@@ -164,11 +164,11 @@ $\beta_0$ represents the intercept of this binary logistic model for Liberal Par
 
 $\beta_1$ to $\beta_2$ represents the relationship between the age of the respondents and which party they have chosen to vote for
 
-$\beta_3$ to $\beta_13$ represents the relationship between the provinces where the respondents live and whether they voted for the Liberal Party
+$\beta_3$ to $\beta_{13}$ represents the relationship between the provinces where the respondents live and whether they voted for the Liberal Party
 
-$\beta_14$ to $\beta_15$ represents the relationship  between the level of education of respondents and whether they choose to support Liberal Party in the elelction.
+$\beta_{14}$ to $\beta_{15}$ represents the relationship  between the level of education of respondents and whether they choose to support Liberal Party in the elelction.
 
-$\beta_16$ to $\beta_18$ represents the relationship between different age groups of respondents and whether they voted for the Liberal Party
+$\beta_{16}$ to $\beta_{18}$ represents the relationship between different age groups of respondents and whether they voted for the Liberal Party
 
 $log(\frac{p}{1-p})$ represent the probability of the Liberal Party's total number of votes in the 2019 Canadian Federal Elections. $vote_liberal$=1 means that this respondents voted for Liberal Party, while $vote_liberal$=0 means that this respondents did not vote for Liberal Party.
 
@@ -331,7 +331,7 @@ From the above plot, for female voters, most of them are more supportive of the 
 ```{r echo=FALSE}
 dd <- first_dataset
 dd <- dd[order(dd$age_group), ]
-ggplot(dd, aes(age_group)) + geom_bar(aes(fill = votechoice), position='dodge') + ggtitle("Which party do people in different age group support")
+ggplot(dd, aes(age_group)) + geom_bar(aes(fill = votechoice), position='dodge') + ggtitle("Which party do people in different age groups support")
 ```
 
 From the above plot, in age groups which are old people and very old people, the two parties with the highest approval ratings are the Liberal party and the Conservative Party, and the approval ratings of these two parties are almost the same. Moreover, for young people and adults, more people voted for the Liberal Party in the election. In particular, the second most popular party among the young is the NDP, while the second most popular party among the other three age groups is always the Conservative Party.
@@ -401,9 +401,9 @@ In general, when we assume that the turnout is 100%, the predicted election resu
 
 
 ## Weakness & Next Steps
-The Weakness of this project is the census dataset. We use the GSS dataset as the census dataset, yet the total number of rows of census dataset was similar to the number of rows of Sample Data which we used to build the binary logistic regression model. This situation may lead to getting inaccurate prediction of the election results after using this census dataset to make the post-stratification. Furthermore, the GSS dataset we used is 2017 data. Although it is only two years later, compared with the real-time data in 2019, the accuracy is still not high. 
+The Weakness of this project is the census dataset. We use the GSS dataset as the census dataset, yet the total number of rows of the census dataset was similar to the number of rows of Sample Data which we used to build the binary logistic regression model. This situation may lead to getting inaccurate prediction of the election results after using this census dataset to make the post-stratification. Furthermore, the GSS dataset we used is 2017 data. Although only two years apart, compared with the real-time data in 2019, the accuracy is still not high. 
 
-For the next step, we will look for a better dataset with massive data, high credibility, full coverage of information, as close as possible to the 2019 Canadian Federal Election, as the census data. Moreover, we also will check out more information about the 2019 Canadian Federal Election, including the policies guaranteed by each party during the election, election declarations, etc. And try to find as many variables that have a great impact on the results of the 2019 Canadian Federal Election, so that our model can be more comprehensive and accurate
+For the next step, we will look for a better dataset with massive data, high credibility, full coverage of information, as close as possible to the 2019 Canadian Federal Election, as the census data. Moreover, we also will check out more information about the 2019 Canadian Federal Election, including the policies guaranteed by each party during the election, election declarations, etc. And try to find as many variables that have a great impact on the results of the 2019 Canadian Federal Election so that our model can be more comprehensive and accurate.
 
 
 
