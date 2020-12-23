@@ -1,0 +1,446 @@
+---
+title: "How the voter turnout in the federal election has an impact on the outcome of the election"
+date: "22/12/2020"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(kableExtra)
+library(tinytex)
+library(tableone)
+library(pander)
+knitr::opts_chunk$set(echo = TRUE)
+first_dataset <- read_csv("clean_first_data.csv")
+census_dataset <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character())) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+plot_dataset <- read_csv("plot_data.csv")
+```
+### Option B
+
+### Author: Jiaheng Li(lijiahe5, 1003825088)
+
+
+# Abstract
+
+This project focuses on whether the final result is the same, if "everyone" voted in the 2019 Canadian Federal Election, based on the 2019 Canadian Election Study and Canadian general social surveys. Knowledge points of statistics such as the multiple logistic models, post-stratification and barplot, are used in the analyses. The purpose of this project is to make people know the importance of voting in the general election
+
+# Keywords
+Binary-logistic model, Post-stratification, Vote, Bar plot, Logistic Regression, Election
+
+# Introduction
+
+The Canadian federal election held every four years is an important opportunity for Canadians to express their views on the country's development and contribute to its growth in the next four years. However, although some people are dissatisfied with the current national policies and economic trends, they did not vote for them in the federal election. Maybe they feel that one of their votes does not affect the general election outcome, nor can it affect the country's future development direction, or they feel that the federal election is not essential.
+
+In this project, "Everyone" represents all people who have the right to vote in the 2019 Canadian federal elections. In the process, we will select a couple of variables that may influence the Canadian federal election from the dataset 2019 Canadian Election Study and Canada Census datasets and analyze the dataset using a multi-logistic model with post-stratification. Then use the results to prove to people that everyone's votes in the general election may change the outcome of the final federal election and the country's future direction. People need to exercise their rights in federal elections and use voting to express their views. 
+
+In the following part of the report, we will introduce our selected data, variables, and the statistical models that help us predict the result of the election that all people who meet the voting conditions of the general election will vote. The following part also contains more information that introduces how to use CES2019 to make a multi-logistic model and make post-stratification by using census datasets; what the final result is. Eventually, we will conclude based on the statistical model and analysis result, explaining the importance of turnout. 
+
+
+# Methodology
+
+## Data
+The multi-logistic model will be used to re-predict the result of the 2019 Candian Federal election that suppose that all the people who have the right to vote in 2019 vote in this election. Therefore, two datasets are ready for this project.
+
+### The 2019 Canadian Election Study online Survey data (sample data)
+
+#### Source of the data
+We select the dataset which is 2019 Canadian Election Study online Survey data as the sample data and uploaded from the website of Canadian Election Study.
+
+*Stephenson, Laura B; Harell, Allison; Rubenson, Daniel; Loewen, Peter John, 2020, "2019 Canadian Election Study - Online Survey", https://doi.org/10.7910/DVN/DUS88V, Harvard Dataverse, V1*
+
+#### Taget population, Sampling Frame and Sample population
+For this data set, the target population is all people living in Canada. The sampling frame is people living in Canada and usually browses webs. The sample population is people who are in the sampling frame, and noticed the online survey and completed the survey.
+
+#### Sampling Methodology
+The goal of this survey is "to gather enough data to allow for constituency-level analysis as well as proper subgroup analysis of populations that are typically underrepresented in the CES"[1]. Besides, the core questions that emerged in the survey remain unchanged from the previous survey, and "because of the large sample size and the ability of an online platform to easily implement complex designs, investigators can imbed many community projects into the larger online survey"[1].
+
+#### Key features, Strengths, Weakness
+For the accuracy of the established statistical model, the 2019 Canadian Election Study online Survey dataset would be used in this project because "the CES has been a rich source of data on Canadians' political behaviour and attitudes, measuring preferences on key political issues such as free trade with the US, social spending and Quebec’s place in Canada"[1]. Moreover, "The 2019 CES will allow for a more fine-grained analysis of barriers to electoral participation and preferences at the micro-level than previous studies have been able to provide."[1]
+However, more variables can be added to this survey data, such as income, marital status, employment status, and so on. This helps people use the survey results to perform some statistical analysis to get more accurate results.
+
+#### Variables selected
+On the other hand, there are 37822 rows and 620 variables in this data set. The variables gender, age, education, provinces and vote choices were selected from the dataset. Then we created six new binary variables that were respectively vote_literal, vote_ndp, vote_green, vote_conservative, vote_people, and vote_Bloc, based on the data in the column of votechoices. Furthermore, rows in which respondents are under 18 until 2019 cleaned from the dataset. The code in clean_data.R completed the filter and cleaned off the dataset. After filter and clean, the dataset contains 20860 rows and 11 variables, and we used it for building binary-logistic models.
+
+#### Raw table for sample data
+```{r, echo=FALSE}
+vars <- c("gender", "age_group", "education", "province")
+factorVars <- c("gender", "age_group", "education", "province")
+tableOne <- CreateTableOne(vars = vars, strata = c("votechoice"), data = first_dataset,
+                           factorVars = factorVars)
+tableOne
+```
+
+### The Canadian general social surveys (census data)
+
+#### Source of the data
+The data of the Canadian general social surveys are provided by Statistics Canada under the terms of the Data Liberation Initiative (DLI) and "General social survey on Family (cycle 31), 2017" was selected as the census data.
+
+*Welcome to my.access -- please choose how you will connect. (n.d.). Retrieved December 20, 2020, from https://sda-artsci-utoronto-ca.myaccess.library.utoronto.ca/sdaweb/html/gss.htm*
+
+#### Taget population, Sampling Frame and Sample population
+The target population is including all people who are 15 years old or older living in Canada. The Sampling Frame contains people in the target population and whose contact information has been stored in Statistics Canada and the Address Register. The sampling population is the people who are included in the sampling frame and complete the survey.
+
+#### Sampling Methodology
+Investigators interviewed the target group and encouraged them to complete the survey by calling at a specific time during the day. For those who refuse to be interviewed for the first time, investigators would call them again and express their wish to participate in the survey.
+
+#### Key features, Strengths, Weakness
+The area covered by this survey is vast, and the number of people accepted is large. These make the results of the survey more convincing and universal. On the other hand, each respondent's information included in the survey results is very rich and diverse, including gender, age, whether they are married, whether they have children, etc.
+
+However, because the survey's primary channel is to make phone calls, some Canadian residents who do not have mobile phones are not given the opportunity to participate in the survey.
+
+#### Variables selected
+
+In this dataset, there are 20602 rows and 461 variables. We select four variables, age, sex, education, and provinces, that match the sample data to make the prediction using the fitted model. We have modified the expression of values corresponding to some variables to obtain exact matches of the two datasets' variables. Since every person who is a Canadian citizen and who on polling day is 18 years of age or older is qualified as an elector[2], we cleaned the rows which the respondents are under 18 until 2019 or are not Canadian citizens. We used gss_dict.txt, gss_dict.txt, and gss_cleaning.R(provided in the Problem set 2) to clean the dataset and filtered by clean_data.R. Finally, we make the post-stratification for this dataset, and the result will be shown in the following sections.
+
+#### Raw table for census data 
+```{r, echo=FALSE}
+vars <- c("gender", "age_group", "education", "province")
+factorVars <- c("gender", "age_group", "education", "province")
+tableOne <- CreateTableOne(vars = vars, strata = c("province"), data = census_dataset,
+                           factorVars = factorVars)
+tableOne
+```
+
+## Model
+The final purpose of this project is to predict the results of the 2019 Canadian Federal Elections that assume all people who are qualified as electors vote in this election. Therefore, to achieve this, we built five different binary logistic models by using data from the 2019 Canadian Election Study online Survey data. We choose to build binary logistic models because the value corresponding to the variables vote_literal, vote_ndp, vote_green, vote_conservative, vote_people, and vote_Bloc are all 0 or 1(vote is 1, not vote is 0). On the other hand, Logistic regression is "a classification algorithm used to find the probability of event success and event failure. It can easily extend to multiple classes(multinomial regression) and a natural probabilistic view of class predictions."[3] After building models, we make post-stratification that applies fitted models to the census data from The Canadian general social surveys to predict the outcome of each party’s general election and compute the probability of each party.
+
+### Model Introduction
+We used four variable as explanatory variable to build five different binary logistic model.
+$x_{gender}$: the gender of the respondent in the sample data. There are two categories:
+
+1. male;
+2. female.
+
+$x_{age}$:Age ranges of respondents in the sample data. It has four categories:
+
+1. Very old people (>70);
+2. old people (50 - 70);
+3. adult (30 - 50);
+4. young people(18 - 30).
+
+$x_{education}$:the level of education identify of respondents in the sample data. It has three categories:
+
+1. high(Bachelor degree or above);
+2. medium(A high school degree or above, but no bachelor's degree);
+3. low(Didn't get a high school degree).
+
+$x_{provinces}$:provinces where respondents live in the sample data. It has 13 categories:
+
+1. AB (Alberta);
+2. BC (British Columbia);
+3. MB (Manitoba);
+4. NB (New Brunswick);
+5. NL (Newfoundland and Labrador);
+6. NS (Nova Scotia);
+7. ON (Ontario);
+8. PE (Prince Edward Island);
+9. QC (Quebec);
+10. SK (Saskatchewan);
+11. NT (Northwest Territories);
+12. NU (Nunavut);
+13. YT (Yukon.)
+
+For the independent variable age, we change it from numerical to categorical. In other words, we select to use age groups to build the binary logistic model and make the bar plots. The reason is that the categorical variable age can be better interpreted and analyzed in the table and some kinds of plots. Besides, for the variable education, it is categorical in the initial data set, but the types of values in this variable are too miscellaneous. Therefore, we categorize all its values into three levels(high, medium and low). The other two variables remain unchanged
+
++ Liberal party
+$$ log(\frac{p}{1-p}) = \beta_0  + \beta_1 X_{genderMale} + \beta_2 X_{genderOthers} + \beta_3 X_{provinceBritishColumbia} + \beta_4 X_{provinceManitoba} +$$
+$$\beta_5 X_{provinceNewBrunswick} + \beta_6 X_{provinceNewfoundlandAndLabrador} + \beta_7 X_{provinceNorthwestTerritories} + $$
+$$\beta_8 X_{provinceNovaScotia} + \beta_9 X_{provinceOntario} + \beta_{10} X_{provincePrinceEdwardIsland} + \beta_{11} X_{provinceQuebec} + \beta_{12} $$
+$$X_{provinceSaskatchewan} + \beta_{13} X_{provinceYukon} + \beta_{14} X_{educationlow} + \beta_{15} X_{educationmedium} + \beta_{16} X_{yobOldPeople} + $$ 
+$$\beta_{17} X_{yobveryOldPeople} + \beta_{18} X_{yobyoungPeople}$$ 
+
+$\beta_0$ represents the intercept of this binary logistic model for Liberal Party 
+
+$\beta_1$ to $\beta_2$ represents the relationship between the age of the respondents and which party they have chosen to vote for
+
+$\beta_3$ to $\beta_13$ represents the relationship between the provinces where the respondents live and whether they voted for the Liberal Party
+
+$\beta_14$ to $\beta_15$ represents the relationship  between the level of education of respondents and whether they choose to support Liberal Party in the elelction.
+
+$\beta_16$ to $\beta_18$ represents the relationship between different age groups of respondents and whether they voted for the Liberal Party
+
+$log(\frac{p}{1-p})$ represent the probability of the Liberal Party's total number of votes in the 2019 Canadian Federal Elections. $vote_liberal$=1 means that this respondents voted for Liberal Party, while $vote_liberal$=0 means that this respondents did not vote for Liberal Party.
+
+The models for the other four parties are the same as this binary logistic model for the Liberal Party but build by using different dependent variables. Once these five models were set up, we made post-stratification with them one by one and calculate the probability of the total number of votes of different parties in the 2019 Canadian Federal Elections.
+
+
+### Post Stratification
+The technique of Post Stratification is beneficial, "it allows the estimating of preference within a specific locality based on a survey taken across a wider area that includes relatively few people from the locality in question, or where the sample may be highly unrepresentative"[2]. On the other hand, it makes statistical analysis more effective, accurate, and less cost. This is the reason why we implement this technique in this project. 
+
+After getting six binary logistic models, we first use R function predict() to compute the log-odds estimate(p) for each group in the census dataset(at the beginning, we use group_by to divide all rows in the census dataset into different groups). Then we implement the equation $log(\frac{p}{1-p})$ to compute the average probability of voting for a particular each group in the dataset. Finally, we sum all probability of voting for this party of each voter and divide by the total number of voters to get the probability of voting for this particular party in the 2019 Canadian Federal Election.
+
+
+### Albernative models
+About alternative models, since the question has been stipulated to use MRP with post-stratification, the only model types we can choose are binary logistic regression model and normal multilevel logistic regression. Finally, we decided on the binary logistic regression model because we think this model allows us to change better to analyze and get more desired results.
+
+
+# Results
+### Results of building models and making post stratification
+As mentioned in section Model, we firstly built binary logistic models for five different parties and applied these fitted models to make the post-stratification based on the census dataset. For this part, we use function glm() to help to build these five binary logistic model.
+
+$$model_{literal} = glm(vote\_Literal \sim gender + province + education + age\_group, data = survey, binomial)$$
+$$model_{conserative} = glm(vote\_Conserative \sim gender + province + education + age\_group, data = survey, binomial)$$
+$$model_{green} = glm(vote\_Green \sim gender + province + education + age\_group, data = survey, binomial)$$
+$$model_{bloc} = glm(vote\_Bloc \sim gender + province + education + age\_group, data = survey, binomial)$$
+$$model_{people} = glm(vote\_People \sim gender + province + education + age\_group, data = survey, binomial)$$
+```{r echo=FALSE}
+model_literal <- glm(vote_literal ~ gender + province + education + age_group, data = first_dataset, binomial)
+kbl(broom::tidy(model_literal), longtable = T, booktabs = T, caption = "Literal Party") %>% kable_styling(latex_options = c("repeat_header"))
+model_conservative <- glm(vote_conservative ~ gender + province + education + age_group, data = first_dataset, binomial)
+kbl(broom::tidy(model_conservative), longtable = T, booktabs = T, caption = "Conservative Party") %>% kable_styling(latex_options = c("repeat_header"))
+model_green <- glm(vote_green ~ gender + province + education + age_group, data = first_dataset, binomial)
+kbl(broom::tidy(model_green), longtable = T, booktabs = T, caption = "Green Party") %>% kable_styling(latex_options = c("repeat_header"))
+model_ndp <- glm(vote_ndp ~ gender + province + education + age_group, data = first_dataset, binomial)
+kbl(broom::tidy(model_ndp), longtable = T, booktabs = T, caption = "NDP") %>% kable_styling(latex_options = c("repeat_header"))
+model_Bloc <- glm(vote_Bloc ~ gender + province + education + age_group, data = first_dataset, binomial)
+kbl(broom::tidy(model_Bloc), longtable = T, booktabs = T, caption = "Bloc Quebecois") %>% kable_styling(latex_options = c("repeat_header"))
+model_people <- glm(vote_people ~ gender + province + education + age_group, data = first_dataset, binomial)
+kbl(broom::tidy(model_people), longtable = T, booktabs = T, caption = "People's party") %>% kable_styling(latex_options = c("repeat_header"))
+```
+
+Since post-stratification is the process of adjusting the estimates, essentially a weighted average of estimates from all possible combinations of attributes[4], we made the post-stratification by using the census dataset and these five completed fitted binary logistic regression models to predict the probability that each Canadian party would get the votes in the popular vote. In this part, We use the steps of making poststratification mentioned in the Model section to get the final vote rate of each party in the general election.
+
+```{r echo=FALSE}
+cl <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character()
+)) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+cl$logodds_estimate <- model_literal%>%predict(newdata = cl)
+cl$estimate <- exp(cl$logodds_estimate)/(1+exp(cl$logodds_estimate))
+cl <- cl %>% mutate(elect_predict_prob = estimate * n)
+liberal_prob <- sum(cl$elect_predict_prob)/19841 
+```
+
+```{r echo=FALSE}
+cc <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character()
+)) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+cc$logodds_estimate <- model_conservative%>%predict(newdata = cc)
+cc$estimate <- exp(cc$logodds_estimate)/(1+exp(cc$logodds_estimate))
+cc <- cc %>% mutate(elect_predict_prob = estimate * n)
+conservative_prob <- sum(cc$elect_predict_prob)/19841 
+```
+
+```{r echo=FALSE}
+cg <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character()
+)) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+cg$logodds_estimate <- model_green%>%predict(newdata = cg)
+cg$estimate <- exp(cg$logodds_estimate)/(1+exp(cg$logodds_estimate))
+cg <- cg %>% mutate(elect_predict_prob = estimate * n)
+green_prob <- sum(cg$elect_predict_prob)/19841 
+```
+
+```{r echo=FALSE}
+cn <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character()
+)) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+cn$logodds_estimate <- model_ndp%>%predict(newdata = cn)
+cn$estimate <- exp(cn$logodds_estimate)/(1+exp(cn$logodds_estimate))
+cn <- cn %>% mutate(elect_predict_prob = estimate * n)
+ndp_prob <- sum(cn$elect_predict_prob)/19841 
+```
+
+```{r echo=FALSE}
+cb <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character()
+)) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+cb$logodds_estimate <- model_Bloc%>%predict(newdata = cb)
+cb$estimate <- exp(cb$logodds_estimate)/(1+exp(cb$logodds_estimate))
+cb <- cb %>% mutate(elect_predict_prob = estimate * n)
+Bloc_prob <- sum(cb$elect_predict_prob)/19841 
+```
+
+```{r echo=FALSE}
+cp <- read_csv("clean_census_data.csv", col_types =cols(
+  gender = col_character(),
+  province = col_character(),
+  education = col_character(),
+  age_group = col_character()
+)) %>%
+  na.omit() %>%
+  group_by(gender, province, education, age_group) %>%
+  count()
+cp$logodds_estimate <- model_people%>%predict(newdata = cp)
+cp$estimate <- exp(cp$logodds_estimate)/(1+exp(cp$logodds_estimate))
+cp <- cp %>% mutate(elect_predict_prob = estimate * n)
+people_prob <- sum(cp$elect_predict_prob)/19841 
+```
+The below table shows the predicted probability of each party in the 2019 Canadian Federal Election which "everyone" voted, after making the post-stratification
+
+#### ***Table1***
+```{r echo=FALSE}
+x <- data.frame("Liberal Party" = paste(as.character(round(liberal_prob, 4) * 100), "%"), "Conservative Party" = paste(as.character(round(conservative_prob, 4) * 100), "%"), "NDP" = paste(as.character(round(ndp_prob, 4) * 100), "%"), "Green Party" = paste(as.character(round(green_prob, 4) * 100), "%"), "People's Party" = paste(as.character(round(people_prob, 4) * 100), "%"), "Bloc Quebecois" = paste(as.character(round(Bloc_prob, 4) * 100), "%"), "Others" = "1.36%")
+kbl(head(x), booktabs = T)
+```
+
+From the table, the Liberals won the general election, with the Conservative party trailing them by less than one percent. Besides, The NDP, The Green Party, the Bloc Quebecois, and the People's Party are in third, fourth, fifth, and sixth places.
+
+### More plots:
+#### ***Figure1***:
+```{r echo=FALSE}
+dd <- first_dataset
+dd <- dd[order(dd$gender), ]
+ggplot(dd, aes(gender)) + geom_bar(aes(fill = votechoice), position='dodge') + ggtitle("Which party do people of different gender levels support")
+```
+
+From the above plot, for female voters, most of them are more supportive of the Liberal Party，followed by the Conservative Party. For male voters, support for the Liberal Party and the Conservative Party is evenly split, but overall, there is more support for the Conservative Party. The other parties are far behind the Liberal Party and the Conservative Party。 At last, for others, more people vote for the NDP. 
+
+\newpage
+#### ***Figure2***:
+```{r echo=FALSE}
+dd <- first_dataset
+dd <- dd[order(dd$age_group), ]
+ggplot(dd, aes(age_group)) + geom_bar(aes(fill = votechoice), position='dodge') + ggtitle("Which party do people in different age group support")
+```
+
+From the above plot, in age groups which are old people and very old people, the two parties with the highest approval ratings are the Liberal party and the Conservative Party, and the approval ratings of these two parties are almost the same. Moreover, for young people and adults, more people voted for the Liberal Party in the election. In particular, the second most popular party among the young is the NDP, while the second most popular party among the other three age groups is always the Conservative Party.
+
+\newpage
+#### ***Figure3***:
+```{r echo=FALSE}
+dd <- first_dataset
+dd <- dd[order(dd$province), ]
+ggplot(dd, aes(province)) + geom_bar(aes(fill = votechoice), position='dodge') + ggtitle("Which party do people from different provinces support")
+```
+
+From the above plot, Ontario has the most voters, followed by Quebec. In these 12 provinces, except for Alberta, Manitoba and Saskatoon, where more people will support the Conservative Party, the Liberal Party has always been in the leading position.
+
+\newpage
+#### ***Figure4***:
+```{r echo=FALSE}
+dd <- first_dataset
+dd <- dd[order(dd$education), ]
+ggplot(dd, aes(education), pch="0") + geom_bar(aes(fill = votechoice), position='dodge') + ggtitle("Which party do people of different educational levels support")
+```
+
+From the above plot, the Liberal Party has a higher support rate among people with higher education, while the Conservative Party has a higher support rate among people with secondary education and lower education.
+
+#### ***Figure5 and Figure6***:
+```{r fig3, out.width = '50%', echo=FALSE}
+counts <- table(plot_dataset$cps19_v_likely)
+pp <- barplot(counts, main="People's attitude towards voting", 
+   xlab="whether vote", cex.names=0.7)
+text(x = pp, y = counts, label = counts, pos = 3, cex = 0.8, col = "black")
+slices <- c(round(589 / 36480 * 100, 2), round(1303 / 36480 * 100, 2), round(594 / 36480 * 100, 2), round(5474 / 36480 * 100, 2), round(101 / 36480 * 100, 2), round(100 - 5474 / 36480 * 100 - 589 / 36480 * 100 - 1303 / 36480 * 100 - 101 / 36480 * 100 - 594 / 36480 * 100, 2))
+lbls <- c("Certain not to vote", "Unlikely to vote", "dont know", "Likely to vote", "Others", "Certain to vote")
+lbls <- paste(lbls, slices) # add percents to labels 
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(slices, labels = lbls, main="People's attitude towards voting")
+```
+The above two plots show the attitude of all respondents in the sample data on whether to vote on election day. Others contain people who are not eligible to vote. 
+
+We can see from the graph that 77.9% of people are sure to vote in the general election. However, 1.61% of people will not vote on election day. And more than 20% of people are not sure whether they will vote. At the same time, among the more than 20% of people, more than a quarter tend not to vote.
+
+# Discussion
+
+## Summary
+The main goal of this project is to identify how the 2019 Canadian Federal Election would have been different if "everyone" had voted and to figure out how important every person's vote for the election. We defined the meaning of "everyone" is that all people who are Canadian citizens and who on polling day are 18 years of age or older[2]. Therefore, the main task is to re-predict the result of the 2019 Canadian Federal Election based on the assumption that all people who have the right to vote for the election attend to vote for the popular vote.
+
+At first, we select four independent variables: gender, education, provinces, and age. We value these four variables as independent variables to build the model and make the post-stratification because people with different age groups, different gender and levels of education live in different provinces could have different views of the current government's political policies and their political pursuits. Besides, we create six new binary variables in the sample data set which these variables' names are vote_literal, vote_conservative, vote_green, vote_ndp, vote_Bloc, and vote_people, corresponding to six federal political parties in Canada, based on the value of variable "votechoice". Then we make these six variables as dependent variables for six different models to predict the result of six main federal political parties in the 2019 Canadian Federal Election. Besides, since these six variables are binary, we decided to make six binary logistic regression models and use the post-stratification technique to apply six fitted models to census data.
+
+## Conclusions
+
+#### Gender
+
+As Figure 1, we can discover that The Conservative Party has slightly more male supporters than the Liberal Party, but among women, supporters of the Liberal Party account for more supporters. This may be related to the Liberal Party’s strong support, and active implementation of the protection of women’s rights just like Justin Trudeau said, "Canadians of all views are welcome within the liberal party of Canada, but when it comes to activiely supporting women's rights, our parties is committed to speaking with one voice"[7].
+
+### Age Group
+
+As Figure 2, we can see that the vast majority of voters over 30 years old voted for the Liberal Party and the Conservative Party. In the three age groups (30-50, 50-70, 70 >), the number of supporters of the Liberal Party and the Conservative Party is basically the same. However, among young people, the top two approval ratings are the Liberal Party and NDP. The main reason why the NDP’s approval rate in this age group exceeds that of the Conservative Party is that the NDP places great importance on young people in this election, just as the leader of NDP said that "he has made it a big part of his campaign to reach out to younger voters in ways that are relevant to them, and on platforms they regularly use"[8].
+
+### Provinces and Education
+Firstly, similar to the last election, in Ontario and Quebec, the approval rate of the Liberal Party is far ahead of other parties. The Conservative Party also has a big lead in the three central provinces of Canada (AB, SK, MB). It is worth mentioning that the supporters of Bloc_Quebecois are mainly concentrated in Quebec, and the number of supporters in this province exceeds that of the Conservative Party. 
+
+Then for the variable education, from the Figure4 we can see that the Liberal Party is supported by the majority of people in the group with high education, while the Conservative Party has received a lot of support from the group with secondary education and below.
+
+#### Final conclusion 
+Finally, the primary purpose of this analysis is to show and prove how the voter turnout in the federal election has an impact on the outcome of the election. At first, we see Figure 5 and Figure 6, which are shown people's different attitudes about whether to vote in the popular vote. Figure 5 shows the total number of people whose attitudes "Likely to vote" and "Unlikely to vote" ranks second and third in all variables in this bar plot, respectively. At the same time, from Figure 6, we can see that the number of people who meet these two variables, plus those who are determined not to vote in the general election, account for 20% of the total. In other words, the number of people who are not certain not to vote or who are certain not to vote is a quarter of the number of people who are certain to vote. Furthermore, from the results of the 2019 Canadian Federal Election, which predict by making the binary logistic models with post-stratification, we can know that the Liberal Party defeated the Conservative Party in the popular election by a slight advantage of 1%. Nevertheless, in the actual 2019 Canadian Federal Election popular vote, the Conservative Party leads the Liberal Party by 1% and takes the lead in the popular vote. Besides, in the re-forecast data, the Green Party rose from 3.45% in reality to 10.16%，, and the People’s Party also got 1% more votes than in reality. The probability of voting for The NDP and Bloc Quebecois remains the same as in fact. 
+
+In general, when we assume that the turnout is 100%, the predicted election results are different from the actual election results, such that the Liberal Party has changed from a loser in the popular vote to a winner. From the above analysis of the results of this project, we can clearly know how the voter turnout in the federal election has an impact on the outcome of the election. Although the results of the two general elections are the Liberal Party's victory, compared to the actual results, the Liberal Party will be more certain of winning the victory because, in the real election, the Liberal Party has a lower total number of votes than the Conservative Party, and finally won the final victory by winning the number of constituencies. In the actual 2019 Canadian Federal Election, "three-quarters (77%) of Canadians reported voting"[5], and this data is similar to the turnout rate, which is shown in Figure 6. Therefore, if the voter turnout rate can be increased, the result will be different from the actual result, as we predicted in the project. Some parties may get more votes in popular voting, thereby taking more seats in the House of Commons, and may even turn defeat into victory in the general election. Therefore, except "some people who cite for not voting in electoral politics because of philosophical, moral, and practical reasons"[6], the rest of citizenships who are 18 years old or older should have their voice in the elections, maybe your vote can improve the final result of the party you support. At last, the conclusion of this whole analysis is the voter turnout in the federal election will not have a significant impact on the election results, but it may change the final result. 
+
+
+## Weakness & Next Steps
+The Weakness of this project is the census dataset. We use the GSS dataset as the census dataset, yet the total number of rows of census dataset was similar to the number of rows of Sample Data which we used to build the binary logistic regression model. This situation may lead to getting inaccurate prediction of the election results after using this census dataset to make the post-stratification. Furthermore, the GSS dataset we used is 2017 data. Although it is only two years later, compared with the real-time data in 2019, the accuracy is still not high. 
+
+For the next step, we will look for a better dataset with massive data, high credibility, full coverage of information, as close as possible to the 2019 Canadian Federal Election, as the census data. Moreover, we also will check out more information about the 2019 Canadian Federal Election, including the policies guaranteed by each party during the election, election declarations, etc. And try to find as many variables that have a great impact on the results of the 2019 Canadian Federal Election, so that our model can be more comprehensive and accurate
+
+
+
+# Reference
+[1] Welcome to the 2019 Canadian Election Study. (n.d.). Retrieved December 08, 2020, from http://www.ces-eec.ca/
+
+[2] Branch, L. (2020, December 15). Consolidated federal laws of canada, Canada Elections Act. Retrieved December 22, 2020, from https://laws.justice.gc.ca/eng/acts/e-2.01/page-2.html
+
+[3] GeeksForGeeks, A., AmiyaRanjanRout, &amp; GeeksForGeeks, T. (2020, September 02). Advantages and Disadvantages of Logistic Regression. Retrieved December 22, 2020, from https://www.geeksforgeeks.org/advantages-and-disadvantages-of-logistic-regression/
+
+[4] Multilevel regression with poststratification. (2020, December 18). Retrieved December 22, 2020, from https://en.wikipedia.org/wiki/Multilevel_regression_with_poststratification
+
+[5] Government of Canada, S. (2020, February 26). Reasons for not voting in the federal election, October 21, 2019. Retrieved December 22, 2020, from https://www150.statcan.gc.ca/n1/daily-quotidien/200226/dq200226b-eng.htm
+
+[6] Voter turnout. (2020, December 02). Retrieved December 22, 2020, from https://en.wikipedia.org/wiki/Voter_turnout
+
+[7] Stand with Justin Trudeau: Support a woman's right to choose: Liberal Party of Canada. (n.d.). Retrieved December 22, 2020, from https://liberal.ca/stand-with-justin-trudeau-support-a-womans-right-to-choose/
+
+[8] Here are some of the big campaign promises from the major parties so far | CBC News. (2019, October 07). Retrieved December 22, 2020, from https://www.cbc.ca/news/politics/major-campaign-promises-federal-election-1.5311181
+
+[9] Yihui Xie andJ.J. Allaire and Garrett Grolemund (2018). R Markdown:The Definitive Guide. Chapman and Hall/CRC. URL https://bookdown.org/yihui/rmarkdown.
+
+[10] Stephenson, Laura B; Harell, Allison; Rubenson, Daniel; Loewen, Peter John, 2020, "2019 Canadian Election Study - Online Survey", https://doi.org/10.7910/DVN/DUS88V, Harvard Dataverse, V1
+
+[11] Statistics Canada. (2017). General Social Survey On Family (Cycle 31), 2017 - Canadian General Social Surveys (GSS).. [online] Available at: <https://sda-artsci-utoronto-ca.myaccess.library.utoronto.ca/sdaweb/html/gss.htm>
+  
+[12] Yihui Xie (2020). tinytex: Helper Functions to Install and Maintain 'TeX Live', and Compile 'LaTeX' Documents. R package version 0.21.
+
+[13] RStudio Team (2020). RStudio: Integrated Development for R. RStudio, PBC, Boston, MA URL http://www.rstudio.com/
+
+[14] Statistics Canada. (2017). General Social Survey On Family (Cycle 31), 2017 - Canadian General Social Surveys (GSS).. [online] Available at: <https://sda-artsci-utoronto-ca.myaccess.library.utoronto.ca/sdaweb/html/gss.htm>
+
+[15] Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+[16] Kazuki Yoshida and Alexander Bartel (2020). tableone: Create 'Table 1' to Describe Baseline Characteristics with or without Propensity Score Weights. R package version 0.12.0. https://CRAN.R-project.org/package=tableone
+
+[17] Gergely Daróczi and Roman Tsegelskyi (2018). pander: An R 'Pandoc' Writer. R package version 0.6.3. https://CRAN.R-project.org/package=pander
+
+[18] Hao Zhu (2020). kableExtra: Construct Complex Table with 'kable' and Pipe Syntax. R package version 1.3.1.
+https://CRAN.R-project.org/package=kableExtra

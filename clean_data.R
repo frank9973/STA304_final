@@ -1,0 +1,125 @@
+library(haven)
+library(tidyverse)
+library(dplyr)
+# Read in the raw data.
+first_data <- read_dta("/Users/jiahengli/Desktop/dataverse_files/sample_data.dta")
+# Add the labels
+first_data <- labelled::to_factor(first_data)
+first_data <- first_data %>% filter(first_data$cps19_citizenship == "Canadian citizen")
+
+reduced_first_data <- first_data %>% dplyr::select(cps19_gender, cps19_province, cps19_education, cps19_yob, 
+                                                     cps19_votechoice, cps19_citizenship)
+
+reduced_first_data$cps19_gender <- ifelse(reduced_first_data$cps19_gender=="A man", "Male", 
+                                         ifelse(reduced_first_data$cps19_gender=="A woman", "Female","Others"))
+
+reduced_first_data$cps19_province <- ifelse(reduced_first_data$cps19_province=="Alberta", "AB", 
+                                         ifelse(reduced_first_data$cps19_province=="British Columbia", "BC", 
+                                                ifelse(reduced_first_data$cps19_province=="Manitoba", "MB",
+                                                       ifelse(reduced_first_data$cps19_province=="New Brunswick", "NB",
+                                                              ifelse(reduced_first_data$cps19_province=="Newfoundland and Labrador", "NL",
+                                                                     ifelse(reduced_first_data$cps19_province=="Northwest Territories", "NT",
+                                                                            ifelse(reduced_first_data$cps19_province=="Nova Scotia", "NS",
+                                                                                   ifelse(reduced_first_data$cps19_province=="Ontario", "ON",
+                                                                                          ifelse(reduced_first_data$cps19_province=="Prince Edward Island", "PE",
+                                                                                                 ifelse(reduced_first_data$cps19_province=="Quebec", "QC",
+                                                                                                        ifelse(reduced_first_data$cps19_province=="Saskatchewan", "SK",
+                                                                                                               ifelse(reduced_first_data$cps19_province=="Yukon", "YT", NA))))))))))))
+
+reduced_first_data$cps19_education <- ifelse(reduced_first_data$cps19_education =="Some secondary/ high school", "low",
+                                              ifelse(reduced_first_data$cps19_education =="Completed secondary/ high school", "medium",
+                                                    ifelse(reduced_first_data$cps19_education =="Some technical, community college, CEGEP, College Classique", "medium",
+                                                           ifelse(reduced_first_data$cps19_education =="Some university", "medium",
+                                                                 ifelse(reduced_first_data$cps19_education =="Bachelor's degree", "high",
+                                                                       ifelse(reduced_first_data$cps19_education =="Master's degree", "high",
+                                                                             ifelse(reduced_first_data$cps19_education =="Professional degree or doctorate", "high", NA)))))))
+
+#reduced_sample_data$cps19_demsat <- ifelse(reduced_sample_data$cps19_demsat =="	Very satisfied", "Good", 
+                                              #ifelse(reduced_sample_data$cps19_demsat == "Fairly satisfied", "Normal", 
+                                                     #ifelse(reduced_sample_data$cps19_demsat =="Not very satisfied", "Bad",NA)))
+
+reduced_first_data$cps19_votechoice <- ifelse(reduced_first_data$cps19_votechoice =="Another party (please specify)", "Another", 
+                                               ifelse(reduced_first_data$cps19_votechoice == "People's Party", "People_Party", 
+                                                      ifelse(reduced_first_data$cps19_votechoice =="Green Party", "Green_Party", 
+                                                                    ifelse(reduced_first_data$cps19_votechoice =="ndp", "NDP",
+                                                                           ifelse(reduced_first_data$cps19_votechoice =="Conservative Party", "Conservative_Party",
+                                                                                  ifelse(reduced_first_data$cps19_votechoice =="Liberal Party", "Liberal_Party", 
+                                                                                        ifelse(is.na(reduced_first_data$cps19_votechoice) == 1, NA,
+                                                                                               ifelse(reduced_first_data$cps19_votechoice =="Don't know/ Prefer not to answer", NA, 
+                                                                                               "Bloc_Quebecois"))))))))
+
+reduced_first_data<-reduced_first_data %>%
+  mutate(vote_literal = ifelse(cps19_votechoice=="Liberal_Party", 1, 0)) %>%
+  mutate(vote_ndp = ifelse(cps19_votechoice=="NDP", 1, 0))%>%
+  mutate(vote_green = ifelse(cps19_votechoice=="Green_Party", 1, 0))%>%
+  mutate(vote_conservative = ifelse(cps19_votechoice=="Conservative_Party", 1, 0))%>%
+  mutate(vote_people = ifelse(cps19_votechoice=="People_Party", 1, 0))%>%
+  mutate(vote_Bloc = ifelse(cps19_votechoice=="Bloc_Quebecois", 1, 0))
+
+reduced_first_data$cps19_yob <- ifelse(as.integer(reduced_first_data$cps19_yob) <= 30, "very_old_people", 
+                                               ifelse(as.integer(reduced_first_data$cps19_yob) <= 50, "old_people", 
+                                                      ifelse(as.integer(reduced_first_data$cps19_yob) <= 70, "adult", 
+                                                             ifelse(as.integer(reduced_first_data$cps19_yob) <= 82, "young_people", NA))))
+reduced_first_data <- reduced_first_data %>% filter(! is.na(cps19_votechoice))
+reduced_first_data <- reduced_first_data %>% filter(! is.na(cps19_gender))
+reduced_first_data <- reduced_first_data %>% filter(! is.na(cps19_education))
+reduced_first_data <- reduced_first_data %>% filter(! is.na(cps19_province))
+reduced_first_data <- reduced_first_data %>% filter(! is.na(cps19_yob))
+colnames(reduced_first_data) <- c("gender", "province", "education", "age_group", "votechoice", "citizenship", "vote_literal", 
+                                  "vote_ndp", "vote_green", "vote_conservative", "vote_people", "vote_Bloc")
+write_csv(reduced_first_data, "clean_first_data.csv")
+
+
+# Read in the raw data.
+census<- read_csv("gss.csv")
+census <- labelled::to_factor(census)
+census_data <- census %>% dplyr::select(sex, province, education, age)
+census_data$age <- ifelse(as.integer(census_data$age) >= 70, "very_old_people", 
+                          ifelse(as.integer(census_data$age) >= 50, "old_people", 
+                                 ifelse(as.integer(census_data$age) >= 30, "adult", 
+                                        ifelse(as.integer(census_data$age) >= 18, "young_people", NA))))
+#census_data <- census_data %>% filter(! is.na(age))
+census_data$province <- ifelse(census_data$province=="Alberta", "AB", 
+                              ifelse(census_data$province=="British Columbia", "BC", 
+                                    ifelse(census_data$province=="Manitoba", "MB",
+                                          ifelse(census_data$province=="New Brunswick", "NB",
+                                                ifelse(census_data$province=="Newfoundland and Labrador", "NL",
+                                                      ifelse(census_data$province=="Northwest Territories", "NT",
+                                                            ifelse(census_data$province=="Nova Scotia", "NS",
+                                                                  ifelse(census_data$province=="Ontario", "ON",
+                                                                        ifelse(census_data$province=="Prince Edward Island", "PE",
+                                                                              ifelse(census_data$province=="Quebec", "QC",
+                                                                                    ifelse(census_data$province=="Nunavut", "NU",
+                                                                                          ifelse(census_data$province=="Saskatchewan", "SK",
+                                                                                                ifelse(census_data$province=="Yukon", "YT", NA)))))))))))))
+
+census_data$education <- ifelse(census_data$education =="Less than high school diploma or its equivalent", "low",
+                               ifelse(census_data$education =="High school diploma or a high school equivalency certificate", "medium",
+                                      ifelse(grepl("College, CEGEP", census_data$education, fixed=TRUE) == 1, "medium",
+                                            ifelse(census_data$education =="Trade certificate or diploma", "medium",
+                                                  ifelse(census_data$education =="University certificate or diploma below the bachelor's level", "medium",
+                                                        ifelse(census_data$education =="Bachelor's degree (e.g. B.A., B.Sc., LL.B.)", "high", 
+                                                               ifelse(grepl("University certificate, diploma or degree above the ", census_data$education, fixed=TRUE) == 1, "high", NA)))))))
+census_data <- census_data %>% filter(! is.na(age))
+census_data <- census_data %>% filter(! is.na(province))
+census_data <- census_data %>% filter(! is.na(education))
+census_data <- census_data %>% filter(! is.na(sex))
+colnames(census_data) <- c("gender", "province", "education", "age_group")
+write_csv(census_data, "clean_census_data.csv")
+
+# Read in the raw data.
+plot_data <- read_dta("/Users/jiahengli/Desktop/dataverse_files/sample_data.dta")
+# Add the labels
+plot_data <- labelled::to_factor(plot_data)
+plot_data <- plot_data %>% 
+  dplyr::select(cps19_gender, cps19_province, cps19_education, cps19_yob, 
+                                                     cps19_votechoice, cps19_interest_elxn_1, cps19_v_likely)%>%filter(plot_data$cps19_citizenship == "Canadian citizen")
+plot_data$cps19_v_likely <- ifelse(plot_data$cps19_v_likely == "Certain to vote", "Certain to vote", 
+                                  ifelse(plot_data$cps19_v_likely == "Likely to vote", "Likely to vote", 
+                                        ifelse(plot_data$cps19_v_likely == "Unlikely to vote", "Unlikely to vote", 
+                                              ifelse(plot_data$cps19_v_likely == "Certain not to vote", "Certain not to vote", 
+                                                     ifelse(plot_data$cps19_v_likely == "Don't know/ Prefer not to answer", "donot know",
+                                                            ifelse(plot_data$cps19_v_likely == "I voted in an advance poll", "Certain to vote", "Others"))))))
+write_csv(plot_data, "plot_data.csv")
+
+
